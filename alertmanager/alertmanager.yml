@@ -1,0 +1,143 @@
+# =============================================================================
+# Alertmanager Configuration for LMS
+# Handles alert routing, grouping, and notifications
+#
+# SMTP OPTIONS:
+# Option 1: Gmail SMTP (works from Docker containers - recommended for dev/cloud)
+#   smtp_smarthost: 'smtp.gmail.com:587'
+#   smtp_from: 'your-email@gmail.com'
+#   smtp_auth_username: 'your-email@gmail.com'
+#   smtp_auth_password: 'your-app-password'  # Generate at: https://myaccount.google.com/apppasswords
+#
+# Option 2: IITK SMTP (only works when running on IITK network/host)
+#   smtp_smarthost: 'smtp.c3ihub.iitk.ac.in:587'
+#   smtp_from: 'lms@c3ihub.iitk.ac.in'
+#   smtp_auth_username: 'lms'
+#   smtp_auth_password: 'Sekf589@R'
+# =============================================================================
+
+global:
+  # How long to wait before sending a notification about new alerts
+  resolve_timeout: 5m
+  
+  # SMTP Configuration
+  # Using IITK SMTP - matching backend settings exactly
+  # Backend uses: authMethod: "LOGIN", tls: { rejectUnauthorized: false }
+  smtp_smarthost: 'smtp.c3ihub.iitk.ac.in:587'
+  smtp_from: 'lms@c3ihub.iitk.ac.in'
+  smtp_auth_username: 'lms'
+  smtp_auth_password: 'Sekf589@R'
+  smtp_auth_identity: 'lms'
+  smtp_require_tls: true
+  smtp_hello: 'localhost'
+  
+  # TLS Configuration - skip certificate verification (required for IITK servers)
+  smtp_tls_config:
+    insecure_skip_verify: true
+
+# =============================================================================
+# Alert Templates
+# =============================================================================
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# =============================================================================
+# Route Configuration
+# Defines how alerts are grouped and routed to receivers
+# =============================================================================
+route:
+  # Default receiver for all alerts
+  receiver: 'default-receiver'
+  
+  # Group alerts by these labels
+  group_by: ['alertname', 'severity', 'service']
+  
+  # Wait time before sending the first notification for a new group
+  group_wait: 30s
+  
+  # Wait time before sending updated notifications for a group
+  group_interval: 5m
+  
+  # Wait time before re-sending notifications for an alert
+  repeat_interval: 4h
+  
+  # Child routes for specific alert handling
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: false
+    
+    # Warning alerts - less urgent
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 1m
+      repeat_interval: 6h
+      continue: false
+    
+    # Infrastructure alerts (down alerts)
+    - match_re:
+        alertname: '.*Down.*'
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 30m
+
+# =============================================================================
+# Inhibition Rules
+# Prevent redundant alerts when parent alerts are firing
+# =============================================================================
+inhibit_rules:
+  # If backend is down, suppress all other backend alerts
+  - source_match:
+      alertname: 'BackendDown'
+    target_match:
+      service: 'lms-backend'
+    equal: ['instance']
+  
+  # If Prometheus is down, suppress all alerts
+  - source_match:
+      alertname: 'PrometheusDown'
+    target_match_re:
+      alertname: '.*'
+    equal: []
+
+# =============================================================================
+# Receivers
+# Define where and how to send notifications
+# =============================================================================
+receivers:
+  # Default receiver (webhook for custom handling)
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://host.docker.internal:3000/v1/observability/alerts/webhook'
+        send_resolved: true
+
+  # Critical alerts receiver
+  - name: 'critical-alerts'
+    webhook_configs:
+      - url: 'http://host.docker.internal:3000/v1/observability/alerts/webhook'
+        send_resolved: true
+    
+    # Email notifications for critical alerts
+    email_configs:
+      - to: 'prathammodi001@gmail.com'
+        send_resolved: true
+        headers:
+          subject: 'CRITICAL: {{ .GroupLabels.alertname }} - LMS Alert'
+
+  # Warning alerts receiver
+  - name: 'warning-alerts'
+    webhook_configs:
+      - url: 'http://host.docker.internal:3000/v1/observability/alerts/webhook'
+        send_resolved: true
+    
+    # Email notifications for warning alerts
+    email_configs:
+      - to: 'prathammodi001@gmail.com'
+        send_resolved: true
+        headers:
+          subject: 'WARNING: {{ .GroupLabels.alertname }} - LMS Alert'

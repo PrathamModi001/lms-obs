@@ -1,0 +1,224 @@
+# =============================================================================
+# Grafana Alert Rules Provisioning
+# Pre-configured alerts that work with Grafana's unified alerting
+# These supplement Prometheus alerts with Grafana-native alerting
+# =============================================================================
+
+apiVersion: 1
+
+groups:
+  # ===========================================================================
+  # LMS Infrastructure Alerts (Grafana Native)
+  # ===========================================================================
+  - orgId: 1
+    name: LMS Infrastructure
+    folder: LMS Alerts
+    interval: 1m
+    rules:
+      # Backend Down Alert
+      - uid: backend-down-grafana
+        title: Backend Service Down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: up{job="lms-backend"}
+              instant: true
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        for: 1m
+        labels:
+          severity: critical
+          category: infrastructure
+          service: lms-backend
+        annotations:
+          summary: LMS Backend service is DOWN
+          description: The backend service has been unreachable for more than 1 minute
+
+      # High Memory Usage Alert
+      - uid: high-memory-grafana
+        title: High Memory Usage (70%+)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: process_resident_memory_bytes / 1024 / 1024
+              instant: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 700
+                    type: gt
+              expression: B
+              refId: C
+              type: threshold
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+          service: lms-backend
+        annotations:
+          summary: High memory usage detected
+          description: Memory usage has exceeded 700MB for 5 minutes
+
+  # ===========================================================================
+  # LMS Application Performance Alerts
+  # ===========================================================================
+  - orgId: 1
+    name: LMS Application Performance
+    folder: LMS Alerts
+    interval: 1m
+    rules:
+      # High Error Rate Alert
+      - uid: high-error-rate-grafana
+        title: High Error Rate (5%+)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                (sum(rate(http_server_request_duration_count{http_status_code=~"5.."}[5m])) 
+                / sum(rate(http_server_request_duration_count[5m]))) * 100
+              instant: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: gt
+              expression: B
+              refId: C
+              type: threshold
+        for: 3m
+        labels:
+          severity: critical
+          category: application
+          service: lms-backend
+        annotations:
+          summary: High server error rate
+          description: 5xx error rate has exceeded 5% for 3 minutes
+
+      # High Response Time Alert
+      - uid: high-response-time-grafana
+        title: High Response Time (P95 > 2s)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.95, sum(rate(http_server_request_duration_bucket[5m])) by (le))
+              instant: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 2
+                    type: gt
+              expression: B
+              refId: C
+              type: threshold
+        for: 5m
+        labels:
+          severity: warning
+          category: application
+          service: lms-backend
+        annotations:
+          summary: High response time detected
+          description: 95th percentile response time has exceeded 2 seconds for 5 minutes

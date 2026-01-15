@@ -1,0 +1,292 @@
+{{ define "default.title" }}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}
+{{ end }}
+
+{{ define "default.text" }}
+LMS Alert Notification
+
+Status: {{ .Status | toUpper }}
+{{ if eq .Status "firing" }}Active Alerts: {{ .Alerts.Firing | len }}{{ end }}
+{{ if eq .Status "resolved" }}Resolved Alerts: {{ .Alerts.Resolved | len }}{{ end }}
+
+{{ range .Alerts }}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Alert: {{ .Labels.alertname }}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Severity: {{ .Labels.severity }}
+Service: {{ .Labels.service }}
+Instance: {{ .Labels.instance }}
+{{ if .Labels.category }}Category: {{ .Labels.category }}{{ end }}
+
+Summary: {{ .Annotations.summary }}
+Description: {{ .Annotations.description }}
+
+{{ if .Annotations.api_endpoint }}API Endpoint: {{ .Annotations.api_endpoint }}{{ end }}
+{{ if .Annotations.status_code }}Status Code: {{ .Annotations.status_code }}{{ end }}
+{{ if .Annotations.error_rate }}Error Rate: {{ .Annotations.error_rate }}{{ end }}
+{{ if .Annotations.response_time_p95 }}Response Time (P95): {{ .Annotations.response_time_p95 }}{{ end }}
+{{ if .Annotations.response_time_p99 }}Response Time (P99): {{ .Annotations.response_time_p99 }}{{ end }}
+{{ if .Annotations.threshold }}Threshold: {{ .Annotations.threshold }}{{ end }}
+{{ if .Annotations.metric_value }}Metric Value: {{ .Annotations.metric_value }}{{ end }}
+{{ if .Annotations.impact }}Impact: {{ .Annotations.impact }}{{ end }}
+{{ if .Annotations.troubleshooting }}Troubleshooting: {{ .Annotations.troubleshooting }}{{ end }}
+{{ if .Annotations.immediate_action }}Immediate Action: {{ .Annotations.immediate_action }}{{ end }}
+
+All Labels:
+{{ range .Labels.SortedPairs }}  - {{ .Name }}: {{ .Value }}
+{{ end }}
+
+Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ if .EndsAt }}Ended: {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}{{ end }}
+{{ end }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This alert was sent by C3iHub LMS Observability Stack
+{{ end }}
+
+{{ define "email.default.subject" }}
+{{ if eq .Status "firing" }}[ALERT]{{ else }}[RESOLVED]{{ end }} {{ .GroupLabels.alertname }} - C3iHub LMS
+{{ end }}
+
+{{ define "email.default.html" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>LMS Alert</title>
+    <!--[if mso]>
+    <style type="text/css">
+        body, table, td { font-family: Arial, Helvetica, sans-serif !important; }
+    </style>
+    <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f0f4f8;">
+    <!-- Email Wrapper -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 50%, #f0f4f8 100%);">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <!-- Main Container -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15); overflow: hidden; border: 1px solid #e2e8f0;">
+                    
+                    <!-- Orange Top Bar (C3iHub brand) -->
+                    <tr>
+                        <td style="height: 6px; background: linear-gradient(90deg, #f48634 0%, #ea580c 25%, #f48634 50%, #ea580c 75%, #f48634 100%);"></td>
+                    </tr>
+
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 30px 40px 20px 40px; text-align: center; background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);">
+                            <!-- Logo Container -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+                                <tr>
+                                    <td style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); padding: 15px 25px; border-radius: 12px; border: 1px solid #fed7aa;">
+                                        <span style="font-size: 24px; font-weight: bold; color: #f48634;">C3iHub</span>
+                                        <span style="font-size: 24px; font-weight: 300; color: #475569;"> LMS</span>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Alert Status Badge -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 20px auto 0 auto;">
+                                <tr>
+                                    <td style="padding: 10px 24px; border-radius: 30px; {{ if eq .Status "firing" }}background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 1px solid #fecaca;{{ else }}background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;{{ end }}">
+                                        <span style="font-size: 16px; font-weight: 600; {{ if eq .Status "firing" }}color: #dc2626;{{ else }}color: #16a34a;{{ end }}">
+                                            {{ if eq .Status "firing" }}⚠ ALERT FIRING{{ else }}✓ RESOLVED{{ end }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Alert Title -->
+                    <tr>
+                        <td style="padding: 0 40px 20px 40px; text-align: center;">
+                            <h1 style="margin: 0; font-size: 22px; font-weight: 600; color: #1e293b;">{{ .GroupLabels.alertname }}</h1>
+                            <p style="margin: 8px 0 0 0; font-size: 14px; color: #64748b;">
+                                {{ if eq .Status "firing" }}{{ .Alerts.Firing | len }} active alert(s){{ else }}{{ .Alerts.Resolved | len }} resolved alert(s){{ end }}
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Divider -->
+                    <tr>
+                        <td style="padding: 0 40px;">
+                            <div style="height: 1px; background: linear-gradient(90deg, transparent, #e2e8f0, transparent);"></div>
+                        </td>
+                    </tr>
+
+                    <!-- Alert Cards -->
+                    <tr>
+                        <td style="padding: 20px 40px;">
+                            {{ range .Alerts }}
+                            <!-- Single Alert Card -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 16px; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                                <!-- Card Header -->
+                                <tr>
+                                    <td style="padding: 14px 20px; {{ if eq .Status "resolved" }}background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-left: 4px solid #22c55e;{{ else if eq .Labels.severity "critical" }}background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-left: 4px solid #ef4444;{{ else }}background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 4px solid #f59e0b;{{ end }}">
+                                        <span style="font-weight: 600; font-size: 15px; {{ if eq .Status "resolved" }}color: #166534;{{ else if eq .Labels.severity "critical" }}color: #991b1b;{{ else }}color: #92400e;{{ end }}">
+                                            {{ if eq .Status "resolved" }}✓{{ else if eq .Labels.severity "critical" }}●{{ else }}▲{{ end }} {{ .Labels.alertname }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Card Body -->
+                                <tr>
+                                    <td style="padding: 16px 20px; background: #fafbfc;">
+                                        <!-- Labels Row -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                                            <tr>
+                                                <td style="padding: 4px 10px; background: {{ if eq .Labels.severity "critical" }}#ef4444{{ else }}#f59e0b{{ end }}; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase;">{{ .Labels.severity }}</td>
+                                                <td style="width: 8px;"></td>
+                                                <td style="padding: 4px 10px; background: #3b82f6; color: white; border-radius: 4px; font-size: 11px; font-weight: 600;">{{ .Labels.service }}</td>
+                                                {{ if .Labels.category }}
+                                                <td style="width: 8px;"></td>
+                                                <td style="padding: 4px 10px; background: #8b5cf6; color: white; border-radius: 4px; font-size: 11px; font-weight: 600;">{{ .Labels.category }}</td>
+                                                {{ end }}
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Summary & Description -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 14px;">
+                                            <tr>
+                                                <td style="padding: 12px 14px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                                    <p style="margin: 0 0 8px 0; font-size: 13px; color: #64748b; font-weight: 600;">Summary</p>
+                                                    <p style="margin: 0; font-size: 14px; color: #1e293b; line-height: 1.5;">{{ .Annotations.summary }}</p>
+                                                    {{ if .Annotations.description }}
+                                                    <p style="margin: 12px 0 8px 0; font-size: 13px; color: #64748b; font-weight: 600;">Description</p>
+                                                    <p style="margin: 0; font-size: 14px; color: #475569; line-height: 1.5;">{{ .Annotations.description }}</p>
+                                                    {{ end }}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Detailed Information Section -->
+                                        {{ if or .Annotations.api_endpoint .Annotations.status_code .Annotations.error_rate .Annotations.response_time_p95 .Annotations.threshold }}
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 12px;">
+                                            <tr>
+                                                <td style="padding: 12px 14px; background: #f1f5f9; border-radius: 8px; border: 1px solid #cbd5e1;">
+                                                    <p style="margin: 0 0 10px 0; font-size: 13px; color: #475569; font-weight: 600;">📊 Alert Details</p>
+                                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                                        {{ if .Annotations.api_endpoint }}
+                                                        <tr>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #64748b; width: 120px;">API Endpoint:</td>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #1e293b; font-family: monospace; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">{{ .Annotations.api_endpoint }}</td>
+                                                        </tr>
+                                                        {{ end }}
+                                                        {{ if .Annotations.status_code }}
+                                                        <tr>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #64748b; width: 120px;">Status Code:</td>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #dc2626; font-weight: 600;">{{ .Annotations.status_code }}</td>
+                                                        </tr>
+                                                        {{ end }}
+                                                        {{ if .Annotations.error_rate }}
+                                                        <tr>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #64748b; width: 120px;">Error Rate:</td>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #dc2626; font-weight: 600;">{{ .Annotations.error_rate }}</td>
+                                                        </tr>
+                                                        {{ end }}
+                                                        {{ if .Annotations.response_time_p95 }}
+                                                        <tr>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #64748b; width: 120px;">Response Time (P95):</td>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #ea580c; font-weight: 600;">{{ .Annotations.response_time_p95 }}</td>
+                                                        </tr>
+                                                        {{ end }}
+                                                        {{ if .Annotations.response_time_p99 }}
+                                                        <tr>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #64748b; width: 120px;">Response Time (P99):</td>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #dc2626; font-weight: 600;">{{ .Annotations.response_time_p99 }}</td>
+                                                        </tr>
+                                                        {{ end }}
+                                                        {{ if .Annotations.metric_value }}
+                                                        <tr>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #64748b; width: 120px;">Metric Value:</td>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #1e293b; font-weight: 600;">{{ .Annotations.metric_value }}</td>
+                                                        </tr>
+                                                        {{ end }}
+                                                        {{ if .Annotations.threshold }}
+                                                        <tr>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #64748b; width: 120px;">Threshold:</td>
+                                                            <td style="padding: 4px 0; font-size: 12px; color: #64748b;">{{ .Annotations.threshold }}</td>
+                                                        </tr>
+                                                        {{ end }}
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        {{ end }}
+
+                                        <!-- Impact & Troubleshooting -->
+                                        {{ if or .Annotations.impact .Annotations.troubleshooting .Annotations.immediate_action }}
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 12px;">
+                                            <tr>
+                                                <td style="padding: 12px 14px; background: #fef3c7; border-radius: 8px; border: 1px solid #fcd34d;">
+                                                    {{ if .Annotations.impact }}
+                                                    <p style="margin: 0 0 6px 0; font-size: 12px; color: #92400e;"><strong>⚡ Impact:</strong> {{ .Annotations.impact }}</p>
+                                                    {{ end }}
+                                                    {{ if .Annotations.immediate_action }}
+                                                    <p style="margin: 0 0 6px 0; font-size: 12px; color: #991b1b;"><strong>🚨 Action Required:</strong> {{ .Annotations.immediate_action }}</p>
+                                                    {{ end }}
+                                                    {{ if .Annotations.troubleshooting }}
+                                                    <p style="margin: 0; font-size: 12px; color: #78350f;"><strong>🔧 Troubleshooting:</strong> {{ .Annotations.troubleshooting }}</p>
+                                                    {{ end }}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        {{ end }}
+
+                                        <!-- Instance & Labels Info -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 12px;">
+                                            <tr>
+                                                <td style="padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                                    <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b; font-weight: 600;">🏷️ All Labels</p>
+                                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                                        {{ range .Labels.SortedPairs }}
+                                                        <tr>
+                                                            <td style="padding: 2px 0; font-size: 11px; color: #64748b; width: 100px; vertical-align: top;">{{ .Name }}:</td>
+                                                            <td style="padding: 2px 0; font-size: 11px; color: #334155; font-family: monospace; word-break: break-all;">{{ .Value }}</td>
+                                                        </tr>
+                                                        {{ end }}
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Timestamps -->
+                                        <p style="margin: 14px 0 0 0; font-size: 12px; color: #94a3b8;">
+                                            🕐 Started: {{ .StartsAt.Format "Jan 02, 2006 at 15:04:05 MST" }}
+                                            {{ if and (eq .Status "resolved") .EndsAt }}<br>✅ Resolved: {{ .EndsAt.Format "Jan 02, 2006 at 15:04:05 MST" }}{{ end }}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                            {{ end }}
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 20px 40px 30px 40px; background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%); text-align: center;">
+                            <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b;">
+                                This is an automated alert from <strong style="color: #f48634;">C3iHub LMS</strong> Observability Stack
+                            </p>
+                            <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+                                View details in <a href="http://localhost:3002" style="color: #f48634; text-decoration: none;">Grafana</a> | 
+                                <a href="{{ .ExternalURL }}" style="color: #f48634; text-decoration: none;">Alertmanager</a>
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Bottom Bar -->
+                    <tr>
+                        <td style="height: 4px; background: linear-gradient(90deg, #f48634, #ea580c, #f48634);"></td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+{{ end }}

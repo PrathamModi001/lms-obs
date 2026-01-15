@@ -1,0 +1,42 @@
+# =============================================================================
+# Grafana Alerting Provisioning - Contact Points
+# Auto-configures notification channels when Grafana starts
+# =============================================================================
+
+apiVersion: 1
+
+# Contact points define WHERE to send notifications
+contactPoints:
+  # Default contact point for all alerts
+  - orgId: 1
+    name: default-alerts
+    receivers:
+      # Webhook receiver (always enabled)
+      - uid: webhook-default
+        type: webhook
+        settings:
+          url: http://host.docker.internal:3000/v1/observability/alerts/grafana-webhook
+          httpMethod: POST
+        disableResolveMessage: false
+
+  # Critical alerts - high priority notifications
+  - orgId: 1
+    name: critical-alerts
+    receivers:
+      - uid: webhook-critical
+        type: webhook
+        settings:
+          url: http://host.docker.internal:3000/v1/observability/alerts/grafana-webhook
+          httpMethod: POST
+        disableResolveMessage: false
+
+  # Warning alerts - lower priority
+  - orgId: 1
+    name: warning-alerts
+    receivers:
+      - uid: webhook-warning
+        type: webhook
+        settings:
+          url: http://host.docker.internal:3000/v1/observability/alerts/grafana-webhook
+          httpMethod: POST
+        disableResolveMessage: false

@@ -1,0 +1,131 @@
+# LMS Observability Stack
+# Standalone deployment for Prometheus, Grafana, and Alertmanager
+# Monitors LMS Backend metrics via proxy endpoint on port 3000
+# Uses API key authentication for secure metrics access
+
+services:
+    # Prometheus - Metrics Collection & Storage
+    prometheus:
+        image: prom/prometheus:latest
+        container_name: lms-prometheus
+        restart: unless-stopped
+        ports:
+            - "${PROMETHEUS_PORT:-9090}:9090"
+        environment:
+            - HEADERSAPIKEY=${HEADERSAPIKEY:-04VCjkU5TrL5biVxEnTzANj8TxJWJd4M}
+        volumes:
+            - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+            - ./prometheus/alerts_comprehensive.yml:/etc/prometheus/alerts_comprehensive.yml:ro
+            - ./prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml:ro
+            - prometheus-data:/prometheus
+        command:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}"
+            - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+            - "--web.console.templates=/usr/share/prometheus/consoles"
+            - "--web.enable-lifecycle"
+            - "--web.enable-admin-api"
+        networks:
+            - observability
+        healthcheck:
+            test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+
+    # Alertmanager - Alert Routing & Email Notifications
+    alertmanager:
+        image: prom/alertmanager:latest
+        container_name: lms-alertmanager
+        restart: unless-stopped
+        ports:
+            - "${ALERTMANAGER_PORT:-9093}:9093"
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        volumes:
+            - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+            - ./alertmanager/templates:/etc/alertmanager/templates:ro
+            - alertmanager-data:/alertmanager
+        command:
+            - "--config.file=/etc/alertmanager/alertmanager.yml"
+            - "--storage.path=/alertmanager"
+            - "--web.external-url=http://localhost:${ALERTMANAGER_PORT:-9093}"
+        networks:
+            - observability
+        healthcheck:
+            test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+
+    # Grafana - Visualization Dashboards
+    grafana:
+        image: grafana/grafana:latest
+        container_name: lms-grafana
+        restart: unless-stopped
+        ports:
+            - "${GRAFANA_PORT:-3002}:3000"
+        environment:
+            # Admin credentials
+            - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+            - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+            
+            # Security settings
+            - GF_USERS_ALLOW_SIGN_UP=false
+            - GF_USERS_ALLOW_ORG_CREATE=false
+            
+            # Server settings
+            - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3002}
+            - GF_SERVER_SERVE_FROM_SUB_PATH=false
+            
+            # Dashboard settings
+            - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/overview.json
+            
+            # Unified Alerting (Grafana 8+)
+            - GF_UNIFIED_ALERTING_ENABLED=true
+            - GF_ALERTING_ENABLED=false
+            
+            # Analytics
+            - GF_ANALYTICS_REPORTING_ENABLED=false
+            - GF_ANALYTICS_CHECK_FOR_UPDATES=true
+            
+            # Logging
+            - GF_LOG_MODE=console
+            - GF_LOG_LEVEL=${GRAFANA_LOG_LEVEL:-info}
+        volumes:
+            - grafana-data:/var/lib/grafana
+            - ./grafana/provisioning:/etc/grafana/provisioning:ro
+            - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+        networks:
+            - observability
+        depends_on:
+            prometheus:
+                condition: service_healthy
+            alertmanager:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+
+networks:
+    observability:
+        driver: bridge
+        name: lms-observability
+
+volumes:
+    prometheus-data:
+        driver: local
+        name: lms-prometheus-data
+    alertmanager-data:
+        driver: local
+        name: lms-alertmanager-data
+    grafana-data:
+        driver: local
+        name: lms-grafana-data

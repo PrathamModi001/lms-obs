@@ -1,0 +1,435 @@
+# =============================================================================
+# LMS Prometheus Alert Rules - Comprehensive Alerting
+# Replaces CloudWatch alerts with Prometheus + Grafana
+# =============================================================================
+# ORGANIZATION:
+#   1. Infrastructure Alerts (Server Health)
+#   2. Application Performance Alerts
+#   3. Database Alerts (MongoDB)
+#   4. Cache Alerts (Redis)
+#   5. Business Logic Alerts
+# =============================================================================
+
+groups:
+  # ===========================================================================
+  # 1. INFRASTRUCTURE ALERTS - Server Health Monitoring
+  # ===========================================================================
+  - name: infrastructure_alerts
+    interval: 15s
+    rules:
+      # Backend service down - CRITICAL
+      - alert: BackendDown
+        expr: up{job="lms-backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: lms-backend
+          category: infrastructure
+        annotations:
+          summary: "🔴 LMS Backend is DOWN"
+          description: "Backend service on {{ $labels.instance }} has been unreachable for 30 seconds"
+          runbook_url: "https://docs.example.com/runbooks/backend-down"
+
+      # Prometheus self-monitoring
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: prometheus
+          category: infrastructure
+        annotations:
+          summary: "🔴 Prometheus monitoring is DOWN"
+          description: "Prometheus self-scrape is failing"
+
+      # High CPU Usage (70% threshold as requested)
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by(instance) (rate(process_cpu_seconds_total[5m])) * 100) < 30
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: infrastructure
+        annotations:
+          summary: "⚠️ High CPU usage detected"
+          description: "CPU usage is above 70% on {{ $labels.instance }} for 5 minutes"
+
+      # Critical CPU Usage (90%)
+      - alert: CriticalCPUUsage
+        expr: |
+          100 - (avg by(instance) (rate(process_cpu_seconds_total[5m])) * 100) < 10
+        for: 2m
+        labels:
+          severity: critical
+          service: lms-backend
+          category: infrastructure
+        annotations:
+          summary: "🔴 Critical CPU usage"
+          description: "CPU usage is above 90% on {{ $labels.instance }} - immediate action required"
+
+      # High Memory Usage (70% threshold)
+      - alert: HighMemoryUsage
+        expr: |
+          (process_resident_memory_bytes / 1024 / 1024) > 700
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: infrastructure
+        annotations:
+          summary: "⚠️ High memory usage"
+          description: "Memory usage is {{ printf \"%.0f\" $value }}MB on {{ $labels.instance }} (threshold: 700MB)"
+
+      # Critical Memory Usage (90%)
+      - alert: CriticalMemoryUsage
+        expr: |
+          (process_resident_memory_bytes / 1024 / 1024) > 900
+        for: 2m
+        labels:
+          severity: critical
+          service: lms-backend
+          category: infrastructure
+        annotations:
+          summary: "🔴 Critical memory usage"
+          description: "Memory usage is {{ printf \"%.0f\" $value }}MB on {{ $labels.instance }} - risk of OOM"
+
+      # Node.js Heap Usage
+      - alert: HighHeapUsage
+        expr: |
+          (nodejs_heap_size_used_bytes / nodejs_heap_size_total_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: infrastructure
+        annotations:
+          summary: "⚠️ High Node.js heap usage"
+          description: "Heap usage is {{ printf \"%.1f\" $value }}% on {{ $labels.instance }}"
+
+      # Too many open file descriptors
+      - alert: HighFileDescriptors
+        expr: |
+          process_open_fds > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: infrastructure
+        annotations:
+          summary: "⚠️ High file descriptor count"
+          description: "{{ $value }} file descriptors open on {{ $labels.instance }}"
+
+      # Event Loop Lag (Node.js specific)
+      - alert: HighEventLoopLag
+        expr: |
+          nodejs_eventloop_lag_seconds > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: infrastructure
+        annotations:
+          summary: "⚠️ High event loop lag"
+          description: "Event loop lag is {{ printf \"%.2f\" $value }}s on {{ $labels.instance }}"
+
+  # ===========================================================================
+  # 2. APPLICATION PERFORMANCE ALERTS
+  # ===========================================================================
+  - name: application_performance_alerts
+    interval: 30s
+    rules:
+      # High error rate (5xx errors) - COMMENTED OUT
+      # - alert: HighErrorRate
+      #   expr: |
+      #     (
+      #       sum(rate(http_server_request_duration_count{http_status_code=~"5.."}[5m])) 
+      #       / 
+      #       sum(rate(http_server_request_duration_count[5m]))
+      #     ) * 100 > 5
+      #   for: 3m
+      #   labels:
+      #     severity: critical
+      #     service: lms-backend
+      #     category: application
+      #   annotations:
+      #     summary: "🔴 High error rate"
+      #     description: "Error rate is {{ printf \"%.2f\" $value }}% (threshold: 5%)"
+
+      # Very high error rate - immediate action
+      - alert: CriticalErrorRate
+        expr: |
+          (
+            sum(rate(http_server_request_count_total{http_status_code=~"5.."}[2m])) 
+            / 
+            sum(rate(http_server_request_count_total[2m]))
+          ) * 100 > 20
+        for: 1m
+        labels:
+          severity: critical
+          service: lms-backend
+          category: application
+        annotations:
+          summary: "🔴🔴 CRITICAL 5xx error rate - System may be failing!"
+          description: "Server error rate: {{ printf \"%.2f\" $value }}% (threshold: 20%)"
+          error_rate: "{{ printf \"%.2f\" $value }}%"
+          threshold: "20%"
+          impact: "Users experiencing service failures"
+          immediate_action: "Check application logs, database connectivity, and external dependencies"
+
+      # High response time (P95) - COMMENTED OUT
+      # - alert: HighResponseTime
+      #   expr: |
+      #     histogram_quantile(0.95, sum(rate(http_server_request_duration_bucket[5m])) by (le)) > 2
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     service: lms-backend
+      #     category: application
+      #   annotations:
+      #     summary: "⚠️ High response time"
+      #     description: "95th percentile response time is {{ printf \"%.2f\" $value }}s (threshold: 2s)"
+
+      # Critical response time (P99) - threshold: 5 seconds = 5000ms
+      - alert: CriticalResponseTime
+        expr: |
+          histogram_quantile(0.99, sum(rate(http_server_request_duration_bucket[5m])) by (le)) > 5000
+        for: 3m
+        labels:
+          severity: critical
+          service: lms-backend
+          category: application
+        annotations:
+          summary: "🔴 Critical response time - System very slow!"
+          description: "P99 response time: {{ printf \"%.0f\" $value }}ms (threshold: 5000ms)"
+          response_time_p99: "{{ printf \"%.0f\" $value }}ms"
+          threshold: "5000ms"
+          impact: "1% of users experiencing very slow responses"
+          troubleshooting: "Check for resource exhaustion, database locks, or memory issues"
+
+      # Slow specific endpoints (threshold: 2 seconds = 2000ms)
+      - alert: SlowAPIEndpoint
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_server_request_duration_bucket[5m])) by (le, http_route, http_method)) > 2000
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: application
+        annotations:
+          summary: "⚠️ Slow API endpoint detected"
+          description: "{{ $labels.http_method }} {{ $labels.http_route }} - P95 response time: {{ printf \"%.0f\" $value }}ms"
+          api_endpoint: "{{ $labels.http_method }} {{ $labels.http_route }}"
+          response_time_p95: "{{ printf \"%.0f\" $value }}ms"
+          threshold: "2000ms"
+          troubleshooting: "Check database queries, external API calls, or heavy computations on this endpoint"
+
+      # Request rate spike (potential DDoS or traffic surge)
+      - alert: RequestRateSpike
+        expr: |
+          (
+            sum(rate(http_server_request_duration_count[2m])) 
+            / 
+            sum(rate(http_server_request_duration_count[30m]))
+          ) > 3
+        for: 2m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: application
+        annotations:
+          summary: "⚠️ Request rate spike detected"
+          description: "Current request rate is 3x higher than 30-minute average"
+
+      # Too many 4xx errors (client errors)
+      - alert: High4xxErrorRate
+        expr: |
+          (
+            sum(rate(http_server_request_count_total{http_status_code=~"4.."}[5m])) 
+            / 
+            sum(rate(http_server_request_count_total[5m]))
+          ) * 100 > 25
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: application
+        annotations:
+          summary: "⚠️ High client error rate (4xx)"
+          description: "4xx error rate is {{ printf \"%.2f\" $value }}% of all requests"
+          error_rate: "{{ printf \"%.2f\" $value }}%"
+          threshold: "25%"
+          affected_endpoints: "Check Grafana for endpoint breakdown"
+          troubleshooting: "Common causes: invalid requests, authentication failures, rate limiting, missing resources"
+
+      # Detailed 4xx per endpoint (for investigation)
+      - alert: High4xxErrorRatePerEndpoint
+        expr: |
+          (
+            sum by (http_route, http_method, http_status_code) (rate(http_server_request_count_total{http_status_code=~"4.."}[5m])) 
+            / 
+            sum by (http_route, http_method) (rate(http_server_request_count_total[5m]))
+          ) * 100 > 50
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: application
+        annotations:
+          summary: "⚠️ High 4xx error rate on specific endpoint"
+          description: "{{ $labels.http_method }} {{ $labels.http_route }} has {{ printf \"%.1f\" $value }}% error rate (status: {{ $labels.http_status_code }})"
+          api_endpoint: "{{ $labels.http_method }} {{ $labels.http_route }}"
+          status_code: "{{ $labels.http_status_code }}"
+          error_rate: "{{ printf \"%.1f\" $value }}%"
+
+      # No requests (potential complete outage)
+      - alert: NoIncomingRequests
+        expr: |
+          sum(rate(http_server_request_duration_count[5m])) == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: lms-backend
+          category: application
+        annotations:
+          summary: "🔴 No incoming requests"
+          description: "Backend has received no requests for 5 minutes - check if service is accessible"
+
+  # ===========================================================================
+  # 3. DATABASE ALERTS (MongoDB)
+  # ===========================================================================
+  - name: database_alerts
+    interval: 30s
+    rules:
+      # MongoDB connection pool exhausted
+      - alert: MongoDBPoolExhausted
+        expr: |
+          mongodb_pool_available_connections < 5
+        for: 2m
+        labels:
+          severity: critical
+          service: lms-backend
+          category: database
+        annotations:
+          summary: "🔴 MongoDB connection pool nearly exhausted"
+          description: "Only {{ $value }} connections available"
+
+      # MongoDB connection pool low
+      - alert: MongoDBPoolLow
+        expr: |
+          mongodb_pool_available_connections < 10
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: database
+        annotations:
+          summary: "⚠️ MongoDB connection pool running low"
+          description: "{{ $value }} connections available"
+
+      # MongoDB slow operations
+      - alert: MongoDBSlowOperations
+        expr: |
+          histogram_quantile(0.95, sum(rate(mongodb_operation_duration_bucket[5m])) by (le, operation)) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: database
+        annotations:
+          summary: "⚠️ Slow MongoDB operations"
+          description: "{{ $labels.operation }} operations P95 is {{ printf \"%.2f\" $value }}s"
+
+      # High MongoDB operation error rate
+      - alert: MongoDBOperationErrors
+        expr: |
+          rate(mongodb_operations_total{status="error"}[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: critical
+          service: lms-backend
+          category: database
+        annotations:
+          summary: "🔴 MongoDB operation errors"
+          description: "MongoDB experiencing {{ printf \"%.2f\" $value }} errors/sec"
+
+  # ===========================================================================
+  # 4. CACHE ALERTS (Redis)
+  # ===========================================================================
+  - name: cache_alerts
+    interval: 30s
+    rules:
+      # Redis operation errors
+      - alert: RedisOperationErrors
+        expr: |
+          rate(redis_operations_total{status="error"}[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: critical
+          service: lms-backend
+          category: cache
+        annotations:
+          summary: "🔴 Redis operation errors"
+          description: "Redis experiencing {{ printf \"%.2f\" $value }} errors/sec"
+
+      # Low Redis cache hit rate
+      - alert: LowRedisCacheHitRate
+        expr: |
+          (
+            sum(rate(redis_operations_total{operation="hit"}[10m])) 
+            / 
+            (sum(rate(redis_operations_total{operation="hit"}[10m])) + sum(rate(redis_operations_total{operation="miss"}[10m])))
+          ) * 100 < 50
+        for: 15m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: cache
+        annotations:
+          summary: "⚠️ Low Redis cache hit rate"
+          description: "Cache hit rate is {{ printf \"%.1f\" $value }}%"
+
+  # ===========================================================================
+  # 5. BUSINESS LOGIC ALERTS
+  # ===========================================================================
+  - name: business_alerts
+    interval: 60s
+    rules:
+      # Authentication failures spike
+      - alert: AuthenticationFailureSpike
+        expr: |
+          rate(http_server_request_duration_count{http_route=~".*/auth/.*", http_status_code="401"}[5m]) > 1
+        for: 3m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: security
+        annotations:
+          summary: "⚠️ High authentication failure rate"
+          description: "{{ printf \"%.2f\" $value }} auth failures/sec - possible brute force attempt"
+
+      # File upload errors
+      - alert: FileUploadErrors
+        expr: |
+          rate(http_server_request_duration_count{http_route=~".*/upload.*", http_status_code=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: business
+        annotations:
+          summary: "⚠️ File upload errors"
+          description: "File uploads are failing at {{ printf \"%.2f\" $value }} errors/sec"
+
+      # Email sending failures (if tracked)
+      - alert: EmailSendingFailures
+        expr: |
+          rate(email_send_total{status="error"}[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: lms-backend
+          category: business
+        annotations:
+          summary: "⚠️ Email sending failures"
+          description: "Email sending failing at {{ printf \"%.2f\" $value }} errors/sec"

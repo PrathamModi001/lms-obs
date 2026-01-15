@@ -1,0 +1,55 @@
+﻿# Prometheus Configuration for LMS Backend
+# Standalone Observability Deployment
+# Scrapes metrics from backend Node.js application every 15 seconds
+
+global:
+    scrape_interval: 15s # How often to scrape targets
+    evaluation_interval: 15s # How often to evaluate rules
+    scrape_timeout: 10s # Timeout for scrape requests
+
+    # Attach these labels to all time series
+    external_labels:
+        monitor: "lms-monitor"
+        environment: "production"
+
+# Alertmanager configuration
+alerting:
+    alertmanagers:
+        - static_configs:
+              - targets:
+                    - alertmanager:9093
+          scheme: http
+          timeout: 10s
+
+# Alert rules configuration
+rule_files:
+    - "/etc/prometheus/alerts.yml"
+    - "/etc/prometheus/alerts_comprehensive.yml"
+    - "/etc/prometheus/recording_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+    # LMS Backend Application Metrics
+    # Using proxy endpoint on port 3000 (instead of direct 9464)
+    # This allows port 9464 to remain internal/unexposed
+    # Requires x-api-key header for authentication
+    - job_name: "lms-backend"
+      metrics_path: "/v1/observability/prometheus-metrics"
+      
+      # Send API key header for authentication
+      authorization:
+          type: "ApiKey"
+          credentials: "04VCjkU5TrL5biVxEnTzANj8TxJWJd4M"
+      
+      static_configs:
+          - targets: ["host.docker.internal:3000"]
+            labels:
+                service: "lms-backend"
+                instance: "host.docker.internal:3000"
+
+    # Prometheus Self-Monitoring
+    - job_name: "prometheus"
+      static_configs:
+          - targets: ["localhost:9090"]
+            labels:
+                service: "prometheus"

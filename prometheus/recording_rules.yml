@@ -1,0 +1,33 @@
+# Prometheus Recording Rules for LMS Backend
+# Pre-compute frequently used queries for better performance
+
+groups:
+    - name: lms_backend_recording_rules
+      interval: 30s
+      rules:
+          # Request rate by status code
+          - record: job:http_requests:rate5m
+            expr: rate(http_server_request_duration_count[5m])
+
+          # Error rate percentage
+          - record: job:http_errors:rate5m
+            expr: |
+                rate(http_server_request_duration_count{http_status_code=~"5.."}[5m])
+                /
+                rate(http_server_request_duration_count[5m])
+                * 100
+
+          # Average response time
+          - record: job:http_response_time:avg5m
+            expr: |
+                rate(http_server_request_duration_sum[5m])
+                /
+                rate(http_server_request_duration_count[5m])
+
+          # MongoDB operation rate
+          - record: job:mongodb_operations:rate5m
+            expr: rate(mongodb_operations_total[5m])
+
+          # Redis operation rate
+          - record: job:redis_operations:rate5m
+            expr: rate(redis_operations_total[5m])
