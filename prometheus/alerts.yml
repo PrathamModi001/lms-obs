@@ -5,9 +5,9 @@ groups:
     - name: lms_backend_alerts
       interval: 30s
       rules:
-          # High error rate alert (5xx errors)
+          # High error rate alert (5xx errors) - Production only
           - alert: HighErrorRate
-            expr: sum by (http_route, http_method, http_status_code, instance) (rate(http_server_request_count_total{http_status_code=~"5.."}[5m])) > 0.05
+            expr: sum by (http_route, http_method, http_status_code, instance) (rate(http_server_request_count_total{job="lms-backend",environment="production",http_status_code=~"5.."}[5m])) > 0.05
             for: 5m
             labels:
                 severity: critical
@@ -20,9 +20,9 @@ groups:
                 instance: "{{ $labels.instance }}"
                 metric_value: "{{ printf \"%.2f\" $value }} errors/sec"
 
-          # High response time alert (threshold: 2 seconds = 2000ms)
+          # High response time alert (threshold: 2 seconds = 2000ms) - Production only
           - alert: HighResponseTime
-            expr: histogram_quantile(0.95, sum(rate(http_server_request_duration_bucket[5m])) by (le, http_route, http_method)) > 2000
+            expr: histogram_quantile(0.95, sum(rate(http_server_request_duration_bucket{job="lms-backend",environment="production"}[5m])) by (le, http_route, http_method)) > 2000
             for: 5m
             labels:
                 severity: warning
@@ -34,20 +34,20 @@ groups:
                 instance: "{{ $labels.instance }}"
                 metric_value: "{{ printf \"%.0f\" $value }}ms"
 
-          # Backend service down
+          # Backend service down - Production only
           - alert: BackendDown
-            expr: up{job="lms-backend"} == 0
+            expr: up{job="lms-backend",environment="production"} == 0
             for: 1m
             labels:
                 severity: critical
                 service: lms-backend
             annotations:
                 summary: "Backend service is down"
-                description: "LMS Backend on {{ $labels.instance }} has been down for more than 1 minute"
+                description: "Production LMS Backend on {{ $labels.instance }} has been down for more than 1 minute"
 
-          # High memory usage
+          # High memory usage - Production only
           - alert: HighMemoryUsage
-            expr: process_resident_memory_bytes / 1024 / 1024 > 1024
+            expr: process_resident_memory_bytes{job="lms-backend",environment="production"} / 1024 / 1024 > 1024
             for: 5m
             labels:
                 severity: warning
@@ -56,9 +56,9 @@ groups:
                 summary: "High memory usage detected"
                 description: "Memory usage is {{ $value }}MB on {{ $labels.instance }}"
 
-          # MongoDB connection pool exhausted
+          # MongoDB connection pool exhausted - Production only
           - alert: MongoDBPoolExhausted
-            expr: mongodb_pool_available_connections < 2
+            expr: mongodb_pool_available_connections{job="lms-backend",environment="production"} < 2
             for: 2m
             labels:
                 severity: critical

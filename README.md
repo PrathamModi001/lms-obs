@@ -1,62 +1,156 @@
-# LMS Observability Stack
+# 📊 LMS Observability Stack
 
-Monitoring stack for LMS Backend using Prometheus, Alertmanager, and Grafana.
+> Real-time monitoring for **https://lms.c3ihub.iitk.ac.in**
 
-## Quick Start
+---
+
+## 🔄 How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         PRODUCTION SERVER                                    │
+│                    (lms.c3ihub.iitk.ac.in)                                   │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │                      LMS Backend (Node.js)                            │   │
+│  │                                                                       │   │
+│  │   ┌─────────────────┐    ┌─────────────────┐    ┌────────────────┐   │   │
+│  │   │  OpenTelemetry  │───▶│   Prometheus    │───▶│    Metrics     │   │   │
+│  │   │      SDK        │    │    Exporter     │    │   :9464        │   │   │
+│  │   └─────────────────┘    └─────────────────┘    └───────┬────────┘   │   │
+│  │           │                                              │           │   │
+│  │           ▼                                              │           │   │
+│  │   Auto-instruments:                                      │           │   │
+│  │   • HTTP requests                                        │           │   │
+│  │   • Response times                                       │           │   │
+│  │   • Error rates                                          │           │   │
+│  │   • MongoDB queries                                      │           │   │
+│  └──────────────────────────────────────────────────────────┼───────────┘   │
+│                                                              │               │
+│                    Exposed via: /api/v1/observability/prometheus-metrics    │
+│                                                              │               │
+└──────────────────────────────────────────────────────────────┼───────────────┘
+                                                               │
+                              HTTPS + API Key Auth             │
+                                                               │
+┌──────────────────────────────────────────────────────────────┼───────────────┐
+│                         LOCAL MACHINE                        │               │
+│                                                              ▼               │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                    PROMETHEUS (:9090)                                │   │
+│   │                                                                      │   │
+│   │    • Scrapes metrics every 15s                                       │   │
+│   │    • Stores time-series data (30 days)                              │   │
+│   │    • Evaluates alert rules                                          │   │
+│   └───────────────────────┬─────────────────────┬───────────────────────┘   │
+│                           │                     │                            │
+│              ┌────────────┴──────┐    ┌────────┴────────┐                   │
+│              ▼                   ▼    ▼                 ▼                   │
+│   ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐       │
+│   │  GRAFANA (:3002) │   │ ALERTMANAGER     │   │                  │       │
+│   │                  │   │    (:9093)       │   │   📧 EMAIL       │       │
+│   │  📈 Dashboards   │   │                  │──▶│                  │       │
+│   │  📊 Visualize    │   │  🔔 Route alerts │   │  Alert sent to   │       │
+│   │  🔍 Query        │   │  📧 Send emails  │   │  admin inbox     │       │
+│   └──────────────────┘   └──────────────────┘   └──────────────────┘       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🧩 Stack Roles
+
+| Component | Role | One-liner |
+|-----------|------|-----------|
+| **OpenTelemetry** | 📡 Collector | Auto-instruments code, captures metrics |
+| **Prometheus** | 💾 Storage | Scrapes, stores, queries time-series data |
+| **Grafana** | 📊 Visualizer | Beautiful dashboards & charts |
+| **Alertmanager** | 🔔 Notifier | Routes alerts → Email/Webhook |
+
+---
+
+## ⚡ Quick Start
 
 ```bash
-# Start the stack
+cd lms-observability
+docker-compose up -d --build
+```
+
+---
+
+## 🌐 Access
+
+| Service | URL | Auth |
+|---------|-----|------|
+| **Prometheus** | http://localhost:9090 | - |
+| **Grafana** | http://localhost:3002 | `admin` / `admin` |
+| **Alertmanager** | http://localhost:9093 | - |
+
+---
+
+## 🔔 Active Alerts
+
+| Alert | Trigger | Severity |
+|-------|---------|----------|
+| `BackendDown` | Service unreachable 30s | 🔴 Critical |
+| `HighErrorRate` | 5xx errors > 5% | 🔴 Critical |
+| `HighCPUUsage` | CPU > 70% for 5min | 🟡 Warning |
+| `HighMemoryUsage` | Memory > 700MB | 🟡 Warning |
+| `HighResponseTime` | P95 > 2s | 🟡 Warning |
+
+**Alerts → Email:** `prathammodi001@gmail.com`
+
+---
+
+## 📁 Key Files
+
+```
+lms-observability/
+├── docker-compose.yml          # Stack definition
+├── prometheus/
+│   ├── prometheus.yml          # Scrape config (target: production)
+│   └── alerts_comprehensive.yml # Alert rules
+├── alertmanager/
+│   └── alertmanager.yml        # Email routing
+└── grafana/
+    └── dashboards/             # Pre-built dashboards
+```
+
+---
+
+## 🛠️ Common Commands
+
+```bash
+# Start
 docker-compose up -d
-
-# Check status
-docker-compose ps
-
-# View logs
-docker-compose logs -f
 
 # Stop
 docker-compose down
+
+# Restart after config change
+docker-compose restart prometheus
+
+# View logs
+docker-compose logs -f prometheus
+
+# Check targets
+# Open: http://localhost:9090/targets
 ```
 
-## Services
+---
 
-| Service | Port | URL |
-|---------|------|-----|
-| Prometheus | 9090 | http://localhost:9090 |
-| Alertmanager | 9093 | http://localhost:9093 |
-| Grafana | 3002 | http://localhost:3002 (admin/admin) |
+## ✅ Verify It's Working
 
-## Alerting
+1. **Prometheus** → Status → Targets → `lms-backend` should be **UP** 🟢
+2. **Grafana** → Dashboards → See live metrics from production
+3. **Alertmanager** → Check alert status
 
-Emails are sent to `prathammodi001@gmail.com` when:
+---
 
-| Alert | Trigger | Wait |
-|-------|---------|------|
-| BackendDown | Backend unreachable | 30s |
-| HighCPUUsage | CPU > 70% | 5min |
-| HighMemoryUsage | Memory > 700MB | 5min |
-| HighErrorRate | Errors > 5% | 5min |
-| HighResponseTime | P95 > 2s | 5min |
+## 🔐 Security
 
-### Change Email Recipient
+- ✅ API Key authentication for metrics endpoint
+- ✅ HTTPS connection to production
+- ✅ Monitoring is read-only (doesn't affect production)
 
-Edit `alertmanager/alertmanager.yml`:
-```yaml
-email_configs:
-  - to: 'your-email@example.com'
-```
-
-Then restart: `docker-compose restart alertmanager`
-
-## Configuration Files
-
-- `alertmanager/alertmanager.yml` - Email & alert routing
-- `prometheus/alerts_comprehensive.yml` - Alert rules
-- `prometheus/prometheus.yml` - Metrics scraping
-- `grafana/dashboards/` - Dashboard JSONs
-
-## Requirements
-
-- Docker & Docker Compose
-- LMS Backend running on port 3000
-- Network access to smtp.c3ihub.iitk.ac.in:587 (for email alerts)

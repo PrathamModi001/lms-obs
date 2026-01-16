@@ -113,13 +113,13 @@ receivers:
   # Default receiver (webhook for custom handling)
   - name: 'default-receiver'
     webhook_configs:
-      - url: 'http://host.docker.internal:3000/v1/observability/alerts/webhook'
+      - url: 'https://lms.c3ihub.iitk.ac.in/api/v1/observability/alerts/webhook'
         send_resolved: true
 
   # Critical alerts receiver
   - name: 'critical-alerts'
     webhook_configs:
-      - url: 'http://host.docker.internal:3000/v1/observability/alerts/webhook'
+      - url: 'https://lms.c3ihub.iitk.ac.in/api/v1/observability/alerts/webhook'
         send_resolved: true
     
     # Email notifications for critical alerts
@@ -132,7 +132,7 @@ receivers:
   # Warning alerts receiver
   - name: 'warning-alerts'
     webhook_configs:
-      - url: 'http://host.docker.internal:3000/v1/observability/alerts/webhook'
+      - url: 'https://lms.c3ihub.iitk.ac.in/api/v1/observability/alerts/webhook'
         send_resolved: true
     
     # Email notifications for warning alerts

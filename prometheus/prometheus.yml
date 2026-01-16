@@ -29,23 +29,31 @@ rule_files:
 
 # Scrape configurations
 scrape_configs:
-    # LMS Backend Application Metrics
-    # Using proxy endpoint on port 3000 (instead of direct 9464)
-    # This allows port 9464 to remain internal/unexposed
-    # Requires x-api-key header for authentication
+    # LMS Backend Application Metrics - PRODUCTION
+    # Scraping from deployed website at https://lms.c3ihub.iitk.ac.in
+    # Uses x-api-key header for authentication
     - job_name: "lms-backend"
-      metrics_path: "/v1/observability/prometheus-metrics"
+      metrics_path: "/api/v1/observability/prometheus-metrics"
       
-      # Send API key header for authentication
+      # HTTPS scheme for production
+      scheme: https
+      
+      # TLS configuration
+      tls_config:
+          # Set to true if using self-signed certificate, false for valid SSL
+          insecure_skip_verify: false
+      
+      # Send API key via Authorization header (Prometheus standard)
       authorization:
           type: "ApiKey"
           credentials: "04VCjkU5TrL5biVxEnTzANj8TxJWJd4M"
       
       static_configs:
-          - targets: ["host.docker.internal:3000"]
+          - targets: ["lms.c3ihub.iitk.ac.in"]
             labels:
                 service: "lms-backend"
-                instance: "host.docker.internal:3000"
+                environment: "production"
+                instance: "production-backend"
 
     # Prometheus Self-Monitoring
     - job_name: "prometheus"

@@ -17,9 +17,9 @@ groups:
   - name: infrastructure_alerts
     interval: 15s
     rules:
-      # Backend service down - CRITICAL
+      # Backend service down - CRITICAL (Production only)
       - alert: BackendDown
-        expr: up{job="lms-backend"} == 0
+        expr: up{job="lms-backend",environment="production"} == 0
         for: 30s
         labels:
           severity: critical
@@ -27,7 +27,7 @@ groups:
           category: infrastructure
         annotations:
           summary: "🔴 LMS Backend is DOWN"
-          description: "Backend service on {{ $labels.instance }} has been unreachable for 30 seconds"
+          description: "Production backend service on {{ $labels.instance }} has been unreachable for 30 seconds"
           runbook_url: "https://docs.example.com/runbooks/backend-down"
 
       # Prometheus self-monitoring
@@ -42,10 +42,10 @@ groups:
           summary: "🔴 Prometheus monitoring is DOWN"
           description: "Prometheus self-scrape is failing"
 
-      # High CPU Usage (70% threshold as requested)
+      # High CPU Usage (70% threshold as requested) - Production only
       - alert: HighCPUUsage
         expr: |
-          100 - (avg by(instance) (rate(process_cpu_seconds_total[5m])) * 100) < 30
+          100 - (avg by(instance) (rate(process_cpu_seconds_total{job="lms-backend",environment="production"}[5m])) * 100) < 30
         for: 5m
         labels:
           severity: warning
@@ -55,10 +55,10 @@ groups:
           summary: "⚠️ High CPU usage detected"
           description: "CPU usage is above 70% on {{ $labels.instance }} for 5 minutes"
 
-      # Critical CPU Usage (90%)
+      # Critical CPU Usage (90%) - Production only
       - alert: CriticalCPUUsage
         expr: |
-          100 - (avg by(instance) (rate(process_cpu_seconds_total[5m])) * 100) < 10
+          100 - (avg by(instance) (rate(process_cpu_seconds_total{job="lms-backend",environment="production"}[5m])) * 100) < 10
         for: 2m
         labels:
           severity: critical
@@ -68,10 +68,10 @@ groups:
           summary: "🔴 Critical CPU usage"
           description: "CPU usage is above 90% on {{ $labels.instance }} - immediate action required"
 
-      # High Memory Usage (70% threshold)
+      # High Memory Usage (70% threshold) - Production only
       - alert: HighMemoryUsage
         expr: |
-          (process_resident_memory_bytes / 1024 / 1024) > 700
+          (process_resident_memory_bytes{job="lms-backend",environment="production"} / 1024 / 1024) > 700
         for: 5m
         labels:
           severity: warning
@@ -81,10 +81,10 @@ groups:
           summary: "⚠️ High memory usage"
           description: "Memory usage is {{ printf \"%.0f\" $value }}MB on {{ $labels.instance }} (threshold: 700MB)"
 
-      # Critical Memory Usage (90%)
+      # Critical Memory Usage (90%) - Production only
       - alert: CriticalMemoryUsage
         expr: |
-          (process_resident_memory_bytes / 1024 / 1024) > 900
+          (process_resident_memory_bytes{job="lms-backend",environment="production"} / 1024 / 1024) > 900
         for: 2m
         labels:
           severity: critical
@@ -224,23 +224,6 @@ groups:
           threshold: "2000ms"
           troubleshooting: "Check database queries, external API calls, or heavy computations on this endpoint"
 
-      # Request rate spike (potential DDoS or traffic surge)
-      - alert: RequestRateSpike
-        expr: |
-          (
-            sum(rate(http_server_request_duration_count[2m])) 
-            / 
-            sum(rate(http_server_request_duration_count[30m]))
-          ) > 3
-        for: 2m
-        labels:
-          severity: warning
-          service: lms-backend
-          category: application
-        annotations:
-          summary: "⚠️ Request rate spike detected"
-          description: "Current request rate is 3x higher than 30-minute average"
-
       # Too many 4xx errors (client errors)
       - alert: High4xxErrorRate
         expr: |
@@ -281,19 +264,6 @@ groups:
           api_endpoint: "{{ $labels.http_method }} {{ $labels.http_route }}"
           status_code: "{{ $labels.http_status_code }}"
           error_rate: "{{ printf \"%.1f\" $value }}%"
-
-      # No requests (potential complete outage)
-      - alert: NoIncomingRequests
-        expr: |
-          sum(rate(http_server_request_duration_count[5m])) == 0
-        for: 5m
-        labels:
-          severity: critical
-          service: lms-backend
-          category: application
-        annotations:
-          summary: "🔴 No incoming requests"
-          description: "Backend has received no requests for 5 minutes - check if service is accessible"
 
   # ===========================================================================
   # 3. DATABASE ALERTS (MongoDB)
