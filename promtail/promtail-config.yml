@@ -1,0 +1,89 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Scrape Docker container logs
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      # Keep only containers with specific labels or names
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)' 
+        target_label: 'container_name'
+      - source_labels: ['__meta_docker_container_id']
+        target_label: 'container_id'
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: 'project'
+    pipeline_stages:
+      # Try to parse JSON logs (pino format)
+      - json:
+          expressions:
+            level: lvl
+            trace_id: tid
+            span_id: sid
+            request_id: rid
+            event: event
+            user_id: uid
+      # Add extracted fields as labels for filtering
+      - labels:
+          level:
+          trace_id:
+          span_id:
+          event:
+          user_id:
+      # Add static labels
+      - static_labels:
+          cluster: lms-observability
+      # Only keep logs with actual content
+      - drop:
+          expression: '.*healthcheck.*'
+          drop_counter_reason: healthcheck_filtered
+  
+  # Scrape local backend log files
+  - job_name: backend-files
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: lms-backend
+          service_name: lms-backend
+          __path__: /var/log/backend/logs-*.json
+    pipeline_stages:
+      # Parse JSON log entries
+      - json:
+          expressions:
+            level: l
+            trace_id: tid
+            span_id: sid
+            request_id: rid
+            event: e
+            user_id: u
+            message: msg
+            time: t
+      # Add extracted fields as labels
+      - labels:
+          level:
+          trace_id:
+          span_id:
+          event:
+          user_id:
+      # Add static labels
+      - static_labels:
+          cluster: lms-observability
+          environment: local
+      # Drop legend/comment lines
+      - drop:
+          expression: '^#.*'
+          drop_counter_reason: legend_filtered

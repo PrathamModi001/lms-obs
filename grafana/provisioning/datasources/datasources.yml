@@ -1,0 +1,87 @@
+# Grafana Datasource Provisioning
+# Auto-configures all LGTM datasources when Grafana starts
+
+apiVersion: 1
+
+datasources:
+    # Prometheus - Metrics
+    - name: Prometheus
+      type: prometheus
+      uid: prometheus
+      access: proxy
+      url: http://prometheus:9090
+      isDefault: true
+      editable: true
+      jsonData:
+          httpMethod: POST
+          timeInterval: 15s
+          exemplarTraceIdDestinations:
+              - name: traceID
+                datasourceUid: tempo
+
+    # Loki - Logs
+    - name: Loki
+      type: loki
+      uid: loki
+      access: proxy
+      url: http://loki:3100
+      editable: true
+      jsonData:
+          derivedFields:
+              # Link trace IDs in logs to Tempo
+              - name: TraceID
+                datasourceUid: tempo
+                matcherRegex: '"tid":"([a-f0-9]+)"'
+                url: '$${__value.raw}'
+              - name: TraceID
+                datasourceUid: tempo
+                matcherRegex: 'trace_id=([a-f0-9]+)'
+                url: '$${__value.raw}'
+
+    # Tempo - Traces
+    - name: Tempo
+      type: tempo
+      uid: tempo
+      access: proxy
+      url: http://tempo:3200
+      editable: true
+      jsonData:
+          httpMethod: GET
+          tracesToLogsV2:
+              datasourceUid: loki
+              spanStartTimeShift: '-1h'
+              spanEndTimeShift: '1h'
+              filterByTraceID: true
+              filterBySpanID: false
+              customQuery: true
+              query: '{container_name=~".*backend.*"} |~ "$${__span.traceId}"'
+          tracesToMetrics:
+              datasourceUid: prometheus
+              spanStartTimeShift: '-1h'
+              spanEndTimeShift: '1h'
+              tags:
+                  - key: http.method
+                    value: method
+                  - key: http.route
+                    value: route
+              queries:
+                  - name: Request Rate
+                    query: 'sum(rate(http_server_request_duration_count{$$__tags}[5m]))'
+                  - name: Error Rate
+                    query: 'sum(rate(http_server_request_duration_count{$$__tags,http_status_code=~"5.."}[5m]))'
+          serviceMap:
+              datasourceUid: prometheus
+          nodeGraph:
+              enabled: true
+          lokiSearch:
+              datasourceUid: loki
+
+    # Alertmanager
+    - name: Alertmanager
+      type: alertmanager
+      uid: alertmanager
+      access: proxy
+      url: http://alertmanager:9093
+      editable: true
+      jsonData:
+          implementation: prometheus

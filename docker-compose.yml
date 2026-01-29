@@ -1,7 +1,6 @@
-# LMS Observability Stack
-# Standalone deployment for Prometheus, Grafana, and Alertmanager
-# Monitors LMS Backend metrics via proxy endpoint on port 3000
-# Uses API key authentication for secure metrics access
+# LMS Observability Stack - Full LGTM
+# Loki (Logs), Grafana (Visualization), Tempo (Traces), Mimir/Prometheus (Metrics)
+# Monitors LMS Backend with full correlation between logs, traces, and metrics
 
 services:
     # Prometheus - Metrics Collection & Storage
@@ -27,6 +26,8 @@ services:
             - "--web.console.templates=/usr/share/prometheus/consoles"
             - "--web.enable-lifecycle"
             - "--web.enable-admin-api"
+            - "--web.enable-remote-write-receiver"
+            - "--enable-feature=exemplar-storage"
         networks:
             - observability
         healthcheck:
@@ -62,6 +63,68 @@ services:
             retries: 3
             start_period: 10s
 
+    # Loki - Log Aggregation
+    loki:
+        image: grafana/loki:3.0.0
+        container_name: lms-loki
+        restart: unless-stopped
+        ports:
+            - "${LOKI_PORT:-3100}:3100"
+        volumes:
+            - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+            - loki-data:/loki
+        command: -config.file=/etc/loki/local-config.yaml
+        networks:
+            - observability
+        healthcheck:
+            test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+
+    # Tempo - Distributed Tracing
+    tempo:
+        image: grafana/tempo:2.4.1
+        container_name: lms-tempo
+        restart: unless-stopped
+        ports:
+            - "${TEMPO_PORT:-3200}:3200"          # Tempo API
+            - "${TEMPO_OTLP_GRPC_PORT:-4317}:4317" # OTLP gRPC
+            - "${TEMPO_OTLP_HTTP_PORT:-4318}:4318" # OTLP HTTP
+        volumes:
+            - ./tempo/tempo-config.yml:/etc/tempo/config.yaml:ro
+            - tempo-data:/var/tempo
+        command: -config.file=/etc/tempo/config.yaml
+        networks:
+            - observability
+        depends_on:
+            prometheus:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3200/ready"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+
+    # Promtail - Log Collection Agent
+    promtail:
+        image: grafana/promtail:3.0.0
+        container_name: lms-promtail
+        restart: unless-stopped
+        volumes:
+            - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            - promtail-positions:/tmp
+            - ../backend/observability-data/logs:/var/log/backend:ro
+        command: -config.file=/etc/promtail/config.yml
+        networks:
+            - observability
+        depends_on:
+            loki:
+                condition: service_healthy
+
     # Grafana - Visualization Dashboards
     grafana:
         image: grafana/grafana:latest
@@ -96,6 +159,9 @@ services:
             # Logging
             - GF_LOG_MODE=console
             - GF_LOG_LEVEL=${GRAFANA_LOG_LEVEL:-info}
+            
+            # Feature toggles for better tracing experience
+            - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor tempoSearch tempoBackendSearch tempoApmTable
         volumes:
             - grafana-data:/var/lib/grafana
             - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -106,6 +172,10 @@ services:
             prometheus:
                 condition: service_healthy
             alertmanager:
+                condition: service_healthy
+            loki:
+                condition: service_healthy
+            tempo:
                 condition: service_healthy
         healthcheck:
             test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
@@ -129,3 +199,12 @@ volumes:
     grafana-data:
         driver: local
         name: lms-grafana-data
+    loki-data:
+        driver: local
+        name: lms-loki-data
+    tempo-data:
+        driver: local
+        name: lms-tempo-data
+    promtail-positions:
+        driver: local
+        name: lms-promtail-positions
