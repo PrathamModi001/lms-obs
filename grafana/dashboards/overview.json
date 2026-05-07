@@ -22,44 +22,28 @@
             "datasource": "Prometheus",
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "thresholds"
-                    },
+                    "color": { "mode": "thresholds" },
                     "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            }
-                        ]
+                        "steps": [{ "color": "green", "value": null }]
                     }
                 }
             },
-            "gridPos": {
-                "h": 4,
-                "w": 6,
-                "x": 0,
-                "y": 0
-            },
+            "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
             "id": 1,
             "options": {
                 "colorMode": "value",
                 "graphMode": "area",
                 "justifyMode": "auto",
                 "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": ["lastNotNull"],
-                    "fields": "",
-                    "values": false
-                },
+                "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
                 "textMode": "auto"
             },
             "pluginVersion": "8.0.0",
             "targets": [
                 {
-                    "expr": "sum(rate(http_server_duration_count[5m]))",
+                    "expr": "sum(rate(http_server_request_duration_count[5m]))",
                     "refId": "A"
                 }
             ],
@@ -70,53 +54,33 @@
             "datasource": "Prometheus",
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "thresholds"
-                    },
+                    "color": { "mode": "thresholds" },
                     "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "yellow",
-                                "value": 500
-                            },
-                            {
-                                "color": "red",
-                                "value": 1000
-                            }
+                            { "color": "green", "value": null },
+                            { "color": "yellow", "value": 500 },
+                            { "color": "red", "value": 1000 }
                         ]
                     },
                     "unit": "ms"
                 }
             },
-            "gridPos": {
-                "h": 4,
-                "w": 6,
-                "x": 6,
-                "y": 0
-            },
+            "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
             "id": 2,
             "options": {
                 "colorMode": "value",
                 "graphMode": "area",
                 "justifyMode": "auto",
                 "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": ["mean"],
-                    "fields": "",
-                    "values": false
-                },
+                "reduceOptions": { "calcs": ["mean"], "fields": "", "values": false },
                 "textMode": "auto"
             },
             "pluginVersion": "8.0.0",
             "targets": [
                 {
-                    "expr": "rate(http_server_duration_sum[5m]) / rate(http_server_duration_count[5m])",
+                    "expr": "rate(http_server_request_duration_sum[5m]) / rate(http_server_request_duration_count[5m])",
                     "refId": "A"
                 }
             ],
@@ -127,53 +91,36 @@
             "datasource": "Prometheus",
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "thresholds"
-                    },
+                    "color": { "mode": "thresholds" },
                     "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 1
-                            }
+                            { "color": "green", "value": null },
+                            { "color": "red", "value": 1 }
                         ]
                     },
                     "unit": "percentunit"
                 }
             },
-            "gridPos": {
-                "h": 4,
-                "w": 6,
-                "x": 12,
-                "y": 0
-            },
+            "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
             "id": 3,
             "options": {
                 "colorMode": "value",
                 "graphMode": "area",
                 "justifyMode": "auto",
                 "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": ["lastNotNull"],
-                    "fields": "",
-                    "values": false
-                },
+                "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
                 "textMode": "auto"
             },
             "pluginVersion": "8.0.0",
             "targets": [
                 {
-                    "expr": "sum(rate(http_server_duration_count{http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_count[5m]))",
+                    "expr": "sum(rate(http_server_request_duration_count{http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_request_duration_count[5m]))",
                     "refId": "A"
                 }
             ],
-            "title": "Error Rate",
+            "title": "5xx Error Rate",
             "type": "stat"
         },
         {
@@ -187,50 +134,39 @@
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            }
+                            { "color": "green", "value": null },
+                            { "color": "yellow", "value": 1 },
+                            { "color": "red", "value": 5 }
                         ]
                     }
                 }
             },
-            "gridPos": {
-                "h": 4,
-                "w": 6,
-                "x": 18,
-                "y": 0
-            },
-            "id": 4,
+            "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+            "id": 9,
             "options": {
-                "colorMode": "value",
+                "colorMode": "background",
                 "graphMode": "area",
                 "justifyMode": "auto",
                 "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": ["lastNotNull"],
-                    "fields": "",
-                    "values": false
-                },
+                "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
                 "textMode": "auto"
             },
             "pluginVersion": "8.0.0",
             "targets": [
                 {
-                    "expr": "sum(rate(http_server_duration_count[5m])) * 86400",
+                    "expr": "sum(increase(app_errors_total{severity=~\"error|fatal\"}[5m]))",
                     "refId": "A"
                 }
             ],
-            "title": "Daily Request Volume",
+            "title": "App Errors (5m)",
+            "description": "Total error+fatal events in last 5 minutes. Red = immediate attention needed.",
             "type": "stat"
         },
         {
             "datasource": "Prometheus",
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "palette-classic"
-                    },
+                    "color": { "mode": "palette-classic" },
                     "custom": {
                         "axisLabel": "",
                         "axisPlacement": "auto",
@@ -238,75 +174,46 @@
                         "drawStyle": "line",
                         "fillOpacity": 10,
                         "gradientMode": "none",
-                        "hideFrom": {
-                            "tooltip": false,
-                            "viz": false,
-                            "legend": false
-                        },
+                        "hideFrom": { "tooltip": false, "viz": false, "legend": false },
                         "lineInterpolation": "linear",
                         "lineWidth": 1,
                         "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
+                        "scaleDistribution": { "type": "linear" },
                         "showPoints": "never",
                         "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
+                        "stacking": { "group": "A", "mode": "none" },
+                        "thresholdsStyle": { "mode": "off" }
                     },
                     "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            }
-                        ]
+                        "steps": [{ "color": "green", "value": null }]
                     },
                     "unit": "reqps"
                 }
             },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 4
-            },
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
             "id": 5,
             "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom"
-                },
-                "tooltip": {
-                    "mode": "single"
-                }
+                "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" },
+                "tooltip": { "mode": "single" }
             },
             "pluginVersion": "8.0.0",
             "targets": [
                 {
-                    "expr": "sum(rate(http_server_duration_count[1m])) by (http_method)",
-                    "legendFormat": "{{http_method}}",
+                    "expr": "sum(rate(http_server_request_duration_count[1m])) by (http_route, http_method)",
+                    "legendFormat": "{{http_method}} {{http_route}}",
                     "refId": "A"
                 }
             ],
-            "title": "Request Rate by Endpoint",
+            "title": "Request Rate by Route",
             "type": "timeseries"
         },
         {
             "datasource": "Prometheus",
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "palette-classic"
-                    },
+                    "color": { "mode": "palette-classic" },
                     "custom": {
                         "axisLabel": "",
                         "axisPlacement": "auto",
@@ -314,75 +221,46 @@
                         "drawStyle": "line",
                         "fillOpacity": 10,
                         "gradientMode": "none",
-                        "hideFrom": {
-                            "tooltip": false,
-                            "viz": false,
-                            "legend": false
-                        },
+                        "hideFrom": { "tooltip": false, "viz": false, "legend": false },
                         "lineInterpolation": "linear",
                         "lineWidth": 1,
                         "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
+                        "scaleDistribution": { "type": "linear" },
                         "showPoints": "never",
                         "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
+                        "stacking": { "group": "A", "mode": "none" },
+                        "thresholdsStyle": { "mode": "off" }
                     },
                     "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            }
-                        ]
+                        "steps": [{ "color": "green", "value": null }]
                     },
                     "unit": "ms"
                 }
             },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 4
-            },
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
             "id": 6,
             "options": {
-                "legend": {
-                    "calcs": ["mean", "max"],
-                    "displayMode": "table",
-                    "placement": "bottom"
-                },
-                "tooltip": {
-                    "mode": "single"
-                }
+                "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+                "tooltip": { "mode": "single" }
             },
             "pluginVersion": "8.0.0",
             "targets": [
                 {
-                    "expr": "rate(http_server_duration_sum[5m]) / rate(http_server_duration_count[5m])",
-                    "legendFormat": "{{http_method}}",
+                    "expr": "sum(rate(http_server_request_duration_sum[5m])) by (http_route) / sum(rate(http_server_request_duration_count[5m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
                     "refId": "A"
                 }
             ],
-            "title": "Response Time by Endpoint",
+            "title": "Avg Response Time by Route",
             "type": "timeseries"
         },
         {
             "datasource": "Prometheus",
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "palette-classic"
-                    },
+                    "color": { "mode": "palette-classic" },
                     "custom": {
                         "axisLabel": "",
                         "axisPlacement": "auto",
@@ -390,60 +268,33 @@
                         "drawStyle": "bars",
                         "fillOpacity": 100,
                         "gradientMode": "none",
-                        "hideFrom": {
-                            "tooltip": false,
-                            "viz": false,
-                            "legend": false
-                        },
+                        "hideFrom": { "tooltip": false, "viz": false, "legend": false },
                         "lineInterpolation": "linear",
                         "lineWidth": 1,
                         "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
+                        "scaleDistribution": { "type": "linear" },
                         "showPoints": "never",
                         "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "normal"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
+                        "stacking": { "group": "A", "mode": "normal" },
+                        "thresholdsStyle": { "mode": "off" }
                     },
                     "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            }
-                        ]
+                        "steps": [{ "color": "green", "value": null }]
                     }
                 }
             },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 0,
-                "y": 12
-            },
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
             "id": 7,
             "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom"
-                },
-                "tooltip": {
-                    "mode": "single"
-                }
+                "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" },
+                "tooltip": { "mode": "single" }
             },
             "pluginVersion": "8.0.0",
             "targets": [
                 {
-                    "expr": "sum(rate(http_server_duration_count[1m])) by (http_status_code)",
+                    "expr": "sum(rate(http_server_request_count[1m])) by (http_status_code)",
                     "legendFormat": "{{http_status_code}}",
                     "refId": "A"
                 }
@@ -455,87 +306,158 @@
             "datasource": "Prometheus",
             "fieldConfig": {
                 "defaults": {
-                    "color": {
-                        "mode": "thresholds"
-                    },
-                    "custom": {
-                        "align": "auto",
-                        "displayMode": "auto"
-                    },
+                    "color": { "mode": "thresholds" },
+                    "custom": { "align": "auto", "displayMode": "auto" },
                     "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            }
-                        ]
+                        "steps": [{ "color": "green", "value": null }]
                     }
                 }
             },
-            "gridPos": {
-                "h": 8,
-                "w": 12,
-                "x": 12,
-                "y": 12
-            },
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
             "id": 8,
             "options": {
                 "showHeader": true,
-                "sortBy": [
-                    {
-                        "desc": true,
-                        "displayName": "Requests/sec"
-                    }
-                ]
+                "sortBy": [{ "desc": true, "displayName": "Requests/sec" }]
             },
             "pluginVersion": "8.0.0",
             "targets": [
                 {
-                    "expr": "topk(10, sum(rate(http_server_duration_count[5m])) by (http_method))",
+                    "expr": "topk(10, sum(rate(http_server_request_duration_count[5m])) by (http_route))",
                     "format": "table",
                     "instant": true,
                     "refId": "A"
                 }
             ],
-            "title": "Top 10 Endpoints by Traffic",
+            "title": "Top 10 Routes by Traffic",
             "transformations": [
                 {
                     "id": "organize",
                     "options": {
-                        "excludeByName": {
-                            "Time": true,
-                            "__name__": true
-                        },
+                        "excludeByName": { "Time": true, "__name__": true },
                         "indexByName": {},
                         "renameByName": {
                             "Value": "Requests/sec",
-                            "http_method": "Endpoint"
+                            "http_route": "Route"
                         }
                     }
                 }
             ],
             "type": "table"
+        },
+        {
+            "datasource": "Prometheus",
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 20,
+                        "gradientMode": "none",
+                        "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": { "type": "linear" },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": { "group": "A", "mode": "none" },
+                        "thresholdsStyle": { "mode": "line+area" }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            { "color": "green", "value": null },
+                            { "color": "red", "value": 1 }
+                        ]
+                    }
+                }
+            },
+            "gridPos": { "h": 6, "w": 12, "x": 0, "y": 20 },
+            "id": 10,
+            "options": {
+                "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "right" },
+                "tooltip": { "mode": "multi" }
+            },
+            "pluginVersion": "8.0.0",
+            "targets": [
+                {
+                    "expr": "sum(rate(app_errors_total[5m])) by (severity, source)",
+                    "legendFormat": "{{severity}} / {{source}}",
+                    "refId": "A"
+                }
+            ],
+            "title": "Application Error Rate by Severity",
+            "description": "error = server errors, fatal = process crashes/uncaught exceptions",
+            "type": "timeseries"
+        },
+        {
+            "datasource": "Prometheus",
+            "fieldConfig": {
+                "defaults": {
+                    "color": { "mode": "palette-classic" },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "gradientMode": "none",
+                        "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": { "type": "linear" },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": { "group": "A", "mode": "none" },
+                        "thresholdsStyle": { "mode": "off" }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [{ "color": "green", "value": null }]
+                    },
+                    "unit": "bytes"
+                }
+            },
+            "gridPos": { "h": 6, "w": 12, "x": 12, "y": 20 },
+            "id": 11,
+            "options": {
+                "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+                "tooltip": { "mode": "single" }
+            },
+            "pluginVersion": "8.0.0",
+            "targets": [
+                {
+                    "expr": "nodejs_heap_used_bytes",
+                    "legendFormat": "Heap Used",
+                    "refId": "A"
+                },
+                {
+                    "expr": "nodejs_resident_memory_bytes",
+                    "legendFormat": "RSS",
+                    "refId": "B"
+                }
+            ],
+            "title": "Node.js Memory",
+            "type": "timeseries"
         }
     ],
     "refresh": "10s",
     "schemaVersion": 27,
     "style": "dark",
     "tags": ["lms", "overview"],
-    "templating": {
-        "list": []
-    },
-    "time": {
-        "from": "now-1h",
-        "to": "now"
-    },
+    "templating": { "list": [] },
+    "time": { "from": "now-1h", "to": "now" },
     "timepicker": {},
     "timezone": "",
     "title": "LMS Backend - System Overview",
     "uid": "lms-overview",
-    "version": 1
+    "version": 2
 }
-
-
-

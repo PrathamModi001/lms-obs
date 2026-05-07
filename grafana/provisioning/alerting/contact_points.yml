@@ -1,17 +1,14 @@
 # =============================================================================
 # Grafana Alerting Provisioning - Contact Points
-# Auto-configures notification channels when Grafana starts
 # =============================================================================
 
 apiVersion: 1
 
-# Contact points define WHERE to send notifications
 contactPoints:
-  # Default contact point for all alerts
+  # Default — catches anything not matched by specific routes
   - orgId: 1
     name: default-alerts
     receivers:
-      # Webhook receiver (always enabled)
       - uid: webhook-default
         type: webhook
         settings:
@@ -19,7 +16,8 @@ contactPoints:
           httpMethod: POST
         disableResolveMessage: false
 
-  # Critical alerts - high priority notifications
+  # Critical — fatal errors, backend down, event loop blocked
+  # Add email receiver here for on-call escalation
   - orgId: 1
     name: critical-alerts
     receivers:
@@ -29,8 +27,15 @@ contactPoints:
           url: http://host.docker.internal:3000/v1/observability/alerts/grafana-webhook
           httpMethod: POST
         disableResolveMessage: false
+      # Uncomment and configure for email escalation:
+      # - uid: email-critical
+      #   type: email
+      #   settings:
+      #     addresses: oncall@yourdomain.com
+      #     singleEmail: false
+      #   disableResolveMessage: false
 
-  # Warning alerts - lower priority
+  # Warning — degraded performance, queue failures, email failures
   - orgId: 1
     name: warning-alerts
     receivers:

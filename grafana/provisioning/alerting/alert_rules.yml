@@ -1,83 +1,46 @@
 # =============================================================================
 # Grafana Alert Rules Provisioning
-# Pre-configured alerts that work with Grafana's unified alerting
-# These supplement Prometheus alerts with Grafana-native alerting
 # =============================================================================
 
 apiVersion: 1
 
 groups:
   # ===========================================================================
-  # LMS Infrastructure Alerts (Grafana Native)
+  # LMS Infrastructure Alerts
   # ===========================================================================
   - orgId: 1
     name: LMS Infrastructure
     folder: LMS Alerts
     interval: 1m
     rules:
-      # Backend Down Alert
+      # Backend Down
       - uid: backend-down-grafana
         title: Backend Service Down
         condition: C
         data:
           - refId: A
-            relativeTimeRange:
-              from: 300
-              to: 0
+            relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: prometheus
             model:
               expr: up{job="lms-backend"}
               instant: true
               refId: A
           - refId: B
-            relativeTimeRange:
-              from: 300
-              to: 0
             datasourceUid: __expr__
             model:
-              conditions:
-                - evaluator:
-                    params: []
-                    type: gt
-                  operator:
-                    type: and
-                  query:
-                    params:
-                      - B
-                  reducer:
-                    params: []
-                    type: last
-                  type: query
-              datasource:
-                type: __expr__
-                uid: __expr__
               expression: A
               reducer: last
               refId: B
               type: reduce
           - refId: C
-            relativeTimeRange:
-              from: 300
-              to: 0
             datasourceUid: __expr__
             model:
               conditions:
-                - evaluator:
-                    params:
-                      - 1
-                    type: lt
-                  operator:
-                    type: and
-                  query:
-                    params:
-                      - C
-                  reducer:
-                    params: []
-                    type: last
+                - evaluator: { params: [1], type: lt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
                   type: query
-              datasource:
-                type: __expr__
-                uid: __expr__
               expression: B
               refId: C
               type: threshold
@@ -88,20 +51,18 @@ groups:
           service: lms-backend
         annotations:
           summary: LMS Backend service is DOWN
-          description: The backend service has been unreachable for more than 1 minute
+          description: Backend unreachable for > 1 minute
 
-      # High Memory Usage Alert
+      # High Memory Usage — uses correct Node.js metric
       - uid: high-memory-grafana
-        title: High Memory Usage (70%+)
+        title: High Memory Usage (RSS > 700MB)
         condition: C
         data:
           - refId: A
-            relativeTimeRange:
-              from: 300
-              to: 0
+            relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: prometheus
             model:
-              expr: process_resident_memory_bytes / 1024 / 1024
+              expr: nodejs_resident_memory_bytes / 1024 / 1024
               instant: true
               refId: A
           - refId: B
@@ -115,10 +76,7 @@ groups:
             datasourceUid: __expr__
             model:
               conditions:
-                - evaluator:
-                    params:
-                      - 700
-                    type: gt
+                - evaluator: { params: [700], type: gt }
               expression: B
               refId: C
               type: threshold
@@ -129,7 +87,43 @@ groups:
           service: lms-backend
         annotations:
           summary: High memory usage detected
-          description: Memory usage has exceeded 700MB for 5 minutes
+          description: Node.js RSS has exceeded 700MB for 5 minutes
+
+      # Event Loop Blocked
+      - uid: event-loop-lag-grafana
+        title: Event Loop Lag > 500ms
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.95, sum(rate(nodejs_event_loop_lag_ms_bucket[5m])) by (le))
+              instant: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator: { params: [500], type: gt }
+              expression: B
+              refId: C
+              type: threshold
+        for: 2m
+        labels:
+          severity: critical
+          category: infrastructure
+          service: lms-backend
+        annotations:
+          summary: Node.js event loop is blocked
+          description: P95 event loop lag > 500ms — server likely unresponsive or under extreme load
 
   # ===========================================================================
   # LMS Application Performance Alerts
@@ -139,19 +133,17 @@ groups:
     folder: LMS Alerts
     interval: 1m
     rules:
-      # High Error Rate Alert
+      # High HTTP Error Rate (5xx)
       - uid: high-error-rate-grafana
-        title: High Error Rate (5%+)
+        title: High HTTP 5xx Error Rate (5%+)
         condition: C
         data:
           - refId: A
-            relativeTimeRange:
-              from: 300
-              to: 0
+            relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: prometheus
             model:
               expr: |
-                (sum(rate(http_server_request_duration_count{http_status_code=~"5.."}[5m])) 
+                (sum(rate(http_server_request_duration_count{http_status_code=~"5.."}[5m]))
                 / sum(rate(http_server_request_duration_count[5m]))) * 100
               instant: true
               refId: A
@@ -166,10 +158,7 @@ groups:
             datasourceUid: __expr__
             model:
               conditions:
-                - evaluator:
-                    params:
-                      - 5
-                    type: gt
+                - evaluator: { params: [5], type: gt }
               expression: B
               refId: C
               type: threshold
@@ -179,18 +168,16 @@ groups:
           category: application
           service: lms-backend
         annotations:
-          summary: High server error rate
-          description: 5xx error rate has exceeded 5% for 3 minutes
+          summary: High 5xx error rate
+          description: HTTP 5xx rate > 5% for 3 minutes
 
-      # High Response Time Alert
+      # High Response Time P95
       - uid: high-response-time-grafana
         title: High Response Time (P95 > 2s)
         condition: C
         data:
           - refId: A
-            relativeTimeRange:
-              from: 300
-              to: 0
+            relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: prometheus
             model:
               expr: histogram_quantile(0.95, sum(rate(http_server_request_duration_bucket[5m])) by (le))
@@ -207,10 +194,7 @@ groups:
             datasourceUid: __expr__
             model:
               conditions:
-                - evaluator:
-                    params:
-                      - 2
-                    type: gt
+                - evaluator: { params: [2000], type: gt }
               expression: B
               refId: C
               type: threshold
@@ -220,5 +204,149 @@ groups:
           category: application
           service: lms-backend
         annotations:
-          summary: High response time detected
-          description: 95th percentile response time has exceeded 2 seconds for 5 minutes
+          summary: High P95 response time
+          description: P95 latency > 2s for 5 minutes
+
+      # Fatal / Uncaught Exception
+      - uid: fatal-errors-grafana
+        title: Fatal Application Error
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(app_errors_total{severity="fatal"}[5m]))
+              instant: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator: { params: [0], type: gt }
+              expression: B
+              refId: C
+              type: threshold
+        for: 0s
+        labels:
+          severity: critical
+          category: application
+          service: lms-backend
+        annotations:
+          summary: Fatal error / process crash detected
+          description: One or more fatal events (uncaughtException/unhandledRejection) in the last 5 minutes
+
+      # Application Error Spike
+      - uid: app-error-spike-grafana
+        title: Application Error Spike (>10 errors/min)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: sum(rate(app_errors_total{severity="error"}[1m])) * 60
+              instant: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator: { params: [10], type: gt }
+              expression: B
+              refId: C
+              type: threshold
+        for: 2m
+        labels:
+          severity: warning
+          category: application
+          service: lms-backend
+        annotations:
+          summary: Application error rate spike
+          description: More than 10 server errors per minute for 2 minutes
+
+      # Queue Job Failures
+      - uid: queue-failures-grafana
+        title: Queue Job Failures Spike
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(queue_jobs_failed_total[5m]))
+              instant: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator: { params: [5], type: gt }
+              expression: B
+              refId: C
+              type: threshold
+        for: 1m
+        labels:
+          severity: warning
+          category: application
+          service: lms-backend
+        annotations:
+          summary: Queue job failures detected
+          description: More than 5 queue job failures in the last 5 minutes
+
+      # Email Delivery Failures
+      - uid: email-failures-grafana
+        title: Email Delivery Failures
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(emails_failed_total[10m]))
+              instant: true
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator: { params: [3], type: gt }
+              expression: B
+              refId: C
+              type: threshold
+        for: 0s
+        labels:
+          severity: warning
+          category: application
+          service: lms-backend
+        annotations:
+          summary: Email delivery failures
+          description: More than 3 email delivery failures in the last 10 minutes
