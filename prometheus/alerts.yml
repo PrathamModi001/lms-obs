@@ -37,13 +37,13 @@ groups:
           # Backend service down - Production only
           - alert: BackendDown
             expr: up{job="lms-backend",environment="production"} == 0
-            for: 1m
+            for: 2m
             labels:
                 severity: critical
                 service: lms-backend
             annotations:
                 summary: "Backend service is down"
-                description: "Production LMS Backend on {{ $labels.instance }} has been down for more than 1 minute"
+                description: "Production LMS Backend on {{ $labels.instance }} has been down for more than 4 consecutive checks (2 minutes)"
 
           # High memory usage - Production only
           - alert: HighMemoryUsage

@@ -1,11 +1,6 @@
-# =============================================================================
-# Grafana Alerting Provisioning - Contact Points
-# =============================================================================
-
 apiVersion: 1
 
 contactPoints:
-  # Default — catches anything not matched by specific routes
   - orgId: 1
     name: default-alerts
     receivers:
@@ -16,8 +11,7 @@ contactPoints:
           httpMethod: POST
         disableResolveMessage: false
 
-  # Critical — fatal errors, backend down, event loop blocked
-  # Add email receiver here for on-call escalation
+  # Critical: backend-down, fatal errors, high 5xx — webhook + email
   - orgId: 1
     name: critical-alerts
     receivers:
@@ -27,15 +21,14 @@ contactPoints:
           url: http://host.docker.internal:3000/v1/observability/alerts/grafana-webhook
           httpMethod: POST
         disableResolveMessage: false
-      # Uncomment and configure for email escalation:
-      # - uid: email-critical
-      #   type: email
-      #   settings:
-      #     addresses: oncall@yourdomain.com
-      #     singleEmail: false
-      #   disableResolveMessage: false
+      - uid: email-critical
+        type: email
+        settings:
+          addresses: ${ALERT_EMAIL_TO}
+          singleEmail: true
+        disableResolveMessage: false
 
-  # Warning — degraded performance, queue failures, email failures
+  # Warning: memory, event loop, response time, queue, email failures — webhook only
   - orgId: 1
     name: warning-alerts
     receivers:

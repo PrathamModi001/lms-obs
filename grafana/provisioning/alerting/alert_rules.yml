@@ -1,22 +1,17 @@
-# =============================================================================
-# Grafana Alert Rules Provisioning
-# =============================================================================
-
 apiVersion: 1
 
 groups:
-  # ===========================================================================
-  # LMS Infrastructure Alerts
-  # ===========================================================================
   - orgId: 1
     name: LMS Infrastructure
     folder: LMS Alerts
     interval: 1m
     rules:
-      # Backend Down
+      # Backend Down — noDataState: Alerting because up=0 means scrape failed = backend down
       - uid: backend-down-grafana
         title: Backend Service Down
         condition: C
+        noDataState: Alerting
+        execErrState: Error
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -53,10 +48,11 @@ groups:
           summary: LMS Backend service is DOWN
           description: Backend unreachable for > 1 minute
 
-      # High Memory Usage — uses correct Node.js metric
       - uid: high-memory-grafana
         title: High Memory Usage (RSS > 700MB)
         condition: C
+        noDataState: OK
+        execErrState: Error
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -89,10 +85,12 @@ groups:
           summary: High memory usage detected
           description: Node.js RSS has exceeded 700MB for 5 minutes
 
-      # Event Loop Blocked
+      # Downgraded to warning — no email, just webhook
       - uid: event-loop-lag-grafana
         title: Event Loop Lag > 500ms
         condition: C
+        noDataState: OK
+        execErrState: Error
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -118,25 +116,23 @@ groups:
               type: threshold
         for: 2m
         labels:
-          severity: critical
+          severity: warning
           category: infrastructure
           service: lms-backend
         annotations:
           summary: Node.js event loop is blocked
           description: P95 event loop lag > 500ms — server likely unresponsive or under extreme load
 
-  # ===========================================================================
-  # LMS Application Performance Alerts
-  # ===========================================================================
   - orgId: 1
     name: LMS Application Performance
     folder: LMS Alerts
     interval: 1m
     rules:
-      # High HTTP Error Rate (5xx)
       - uid: high-error-rate-grafana
         title: High HTTP 5xx Error Rate (5%+)
         condition: C
+        noDataState: OK
+        execErrState: Error
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -171,10 +167,11 @@ groups:
           summary: High 5xx error rate
           description: HTTP 5xx rate > 5% for 3 minutes
 
-      # High Response Time P95
       - uid: high-response-time-grafana
         title: High Response Time (P95 > 2s)
         condition: C
+        noDataState: OK
+        execErrState: Error
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -207,10 +204,11 @@ groups:
           summary: High P95 response time
           description: P95 latency > 2s for 5 minutes
 
-      # Fatal / Uncaught Exception
       - uid: fatal-errors-grafana
         title: Fatal Application Error
         condition: C
+        noDataState: OK
+        execErrState: Error
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -243,10 +241,11 @@ groups:
           summary: Fatal error / process crash detected
           description: One or more fatal events (uncaughtException/unhandledRejection) in the last 5 minutes
 
-      # Application Error Spike
       - uid: app-error-spike-grafana
         title: Application Error Spike (>10 errors/min)
         condition: C
+        noDataState: OK
+        execErrState: Error
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -279,10 +278,11 @@ groups:
           summary: Application error rate spike
           description: More than 10 server errors per minute for 2 minutes
 
-      # Queue Job Failures
       - uid: queue-failures-grafana
         title: Queue Job Failures Spike
         condition: C
+        noDataState: OK
+        execErrState: Error
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -315,10 +315,11 @@ groups:
           summary: Queue job failures detected
           description: More than 5 queue job failures in the last 5 minutes
 
-      # Email Delivery Failures
       - uid: email-failures-grafana
         title: Email Delivery Failures
         condition: C
+        noDataState: OK
+        execErrState: Error
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }

@@ -52,6 +52,7 @@ scrape_configs:
           drop_counter_reason: healthcheck_filtered
   
   # Scrape local backend log files
+  # Structure: /var/log/backend/YYYY-MM-DD/{combined,errors,deletion,quiz-audit}.json
   - job_name: backend-files
     static_configs:
       - targets:
@@ -59,9 +60,13 @@ scrape_configs:
         labels:
           job: lms-backend
           service_name: lms-backend
-          __path__: /var/log/backend/logs-*.json
+          __path__: /var/log/backend/**/*.json
     pipeline_stages:
-      # Parse JSON log entries
+      # Drop legend/comment lines (first line of each file starts with #)
+      - drop:
+          expression: '^#.*'
+          drop_counter_reason: legend_filtered
+      # Parse JSON log entries (compact info format: l/t/e/u/tid; full format adds path/method/err)
       - json:
           expressions:
             level: l
@@ -72,18 +77,12 @@ scrape_configs:
             user_id: u
             message: msg
             time: t
-      # Add extracted fields as labels
+      # Add extracted fields as Loki labels for fast filtering
       - labels:
           level:
           trace_id:
-          span_id:
           event:
           user_id:
       # Add static labels
       - static_labels:
           cluster: lms-observability
-          environment: local
-      # Drop legend/comment lines
-      - drop:
-          expression: '^#.*'
-          drop_counter_reason: legend_filtered
